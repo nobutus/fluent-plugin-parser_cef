@@ -158,10 +158,29 @@ module Fluent
       end
 
       def parse_cef_extension_with_strict_mode(text)
+        check_record = {}
         record = {}
         begin
+          last_key_name = nil
           last_valid_key_name = nil
           text.scan(@key_value_format_regexp) do |key, value|
+            if value.count('"') % 2 == 1
+              if last_key_name.nil?
+                check_record[key] = value
+                last_key_name = key
+              elsif check_record[last_key_name].count('"') % 2 == 0
+                check_record[key] = value
+                last_key_name = key
+              else
+                check_record[last_key_name].concat("#{key}=#{value}")
+              end
+            else
+              check_record[key] = value
+              last_key_name = key
+            end
+          end
+
+          check_record.each do |key, value|
             if @keys_array.include?(key)
               record[key] = value
               record[last_valid_key_name].rstrip! unless last_valid_key_name.nil?
